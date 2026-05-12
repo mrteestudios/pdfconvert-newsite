@@ -26,8 +26,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'File must be a PDF' }, { status: 400 })
     }
 
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    let user = null
+    let supabase: Awaited<ReturnType<typeof createClient>> | null = null
+    try {
+      supabase = await createClient()
+      const { data } = await supabase.auth.getUser()
+      user = data.user
+    } catch {}
 
     const job = await cloudConvert.jobs.create({
       tasks: {
@@ -75,7 +80,7 @@ export async function POST(request: NextRequest) {
 
     const downloadUrl = exportTask.result.files[0].url
 
-    if (user) {
+    if (user && supabase) {
       await supabase.from('files').insert({
         user_id: user.id,
         original_name: file.name.replace('.pdf', '.docx'),

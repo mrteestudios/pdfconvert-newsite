@@ -34,11 +34,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Get current user (optional - for tracking)
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    let user = null
+    let supabase: Awaited<ReturnType<typeof createClient>> | null = null
+    try {
+      supabase = await createClient()
+      const { data } = await supabase.auth.getUser()
+      user = data.user
+    } catch {}
 
     // Check daily limit for free users
-    if (user) {
+    if (user && supabase) {
       const { data: profile } = await supabase
         .from('profiles')
         .select('plan, daily_conversions, last_conversion_date')
@@ -117,7 +122,7 @@ export async function POST(request: NextRequest) {
     const compressedSize = exportTask.result.files[0].size || file.size * 0.7
 
     // Track conversion for logged-in users
-    if (user) {
+    if (user && supabase) {
       // Increment daily conversions
       await supabase.rpc('increment_daily_conversions', { user_id: user.id })
       

@@ -36,8 +36,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    let user = null
+    let supabase: Awaited<ReturnType<typeof createClient>> | null = null
+    try {
+      supabase = await createClient()
+      const { data } = await supabase.auth.getUser()
+      user = data.user
+    } catch {}
 
     // Build tasks for CloudConvert
     const uploadTasks: Record<string, { operation: string }> = {}
@@ -96,7 +101,7 @@ export async function POST(request: NextRequest) {
     const downloadUrl = exportTask.result.files[0].url
 
     // Track for logged-in users
-    if (user) {
+    if (user && supabase) {
       await supabase.from('files').insert({
         user_id: user.id,
         original_name: `merged_${files.length}_files.pdf`,
